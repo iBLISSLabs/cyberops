@@ -16,7 +16,7 @@ end = datetime.datetime.now()
 start = end - datetime.timedelta(days=7)
 
 # Requisição das Vulnerabilidades de Severidades publicadas nos últimos XX dias.
-results = nvdlib.searchCVE(cvssV3Severity='', pubStartDate=start, pubEndDate=end, key='805fc588-3d66-4941-9af6-ca85f27c0716', delay=50)
+results = nvdlib.searchCVE(cvssV3Severity='', pubStartDate=start, pubEndDate=end, key='', delay=50)
 
 # Agrupa as CVEs por severidade
 critical = []
