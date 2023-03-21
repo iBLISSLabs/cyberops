@@ -1,64 +1,58 @@
 #!/usr/bin/python3
 #Criado por: Argemiro Silva
 
+import argparse
 import requests
 import json
-import argparse
+from prettytable import PrettyTable
 
-# Define os argumentos de entrada
-parser = argparse.ArgumentParser(description='Lista todos os scans disponíveis no Nessus.')
-parser.add_argument('url', help='URL do Nessus')
-parser.add_argument('username', help='Nome de usuário do Nessus')
-parser.add_argument('password', help='Senha do Nessus')
+# Criar argumentos de linha de comando para URL, nome de usuário e senha
+parser = argparse.ArgumentParser(description="Listar todos os scans da API do Nessus.")
+parser.add_argument("-u", "--url", type=str, required=True, help="URL da API do Nessus.")
+parser.add_argument("-n", "--username", type=str, required=True, help="Nome de usuário para a API do Nessus.")
+parser.add_argument("-p", "--password", type=str, required=True, help="Senha para a API do Nessus.")
 args = parser.parse_args()
 
-nessus_url = args.url + '/nessus'
+url = args.url
 username = args.username
 password = args.password
 
-# Desabilita a verificação de SSL para evitar problemas com servidores sem certificado válido
+# Desativar verificação de SSL, se necessário
 verify_ssl = False
+if not verify_ssl:
+    requests.packages.urllib3.disable_warnings()
+    print("Verificação SSL desativada. Isso não é recomendado em ambientes de produção.")
 
-# Obtém o token de sessão necessário para autenticar na API do Nessus
-response = requests.post(nessus_url + '/session', json={'username': username, 'password': password}, verify=verify_ssl)
+# Fazer login na API do Nessus e obter token de autenticação
+login_url = f"{url}/session"
+login_data = {"username": username, "password": password}
+response = requests.post(login_url, json=login_data, verify=verify_ssl)
+token = response.json()["token"]
 
-# Verifica se a resposta da API foi bem sucedida (código 200)
-if response.status_code == 200:
-    token = json.loads(response.content)['token']
-    headers = {'X-Cookie': 'token=' + token}
+# Definir cabeçalhos da requisição com token de autenticação
+headers = {
+    "X-Cookie": f"token={token}",
+    "Content-Type": "application/json"
+}
 
-    # Lista todos os scans disponíveis no Nessus
-    response = requests.get(nessus_url + '/scans', headers=headers, verify=verify_ssl)
+# Fazer uma solicitação GET para obter uma lista de todos os scans disponíveis na API do Nessus
+scans_url = f"{url}/scans"
+response = requests.get(scans_url, headers=headers, verify=verify_ssl)
+scans = response.json()
 
-    # Verifica se a resposta da API foi bem sucedida (código 200)
-    if response.status_code == 200:
-        scans = json.loads(response.content)
-        print('Lista de scans:')
-        print('{:<10} {:<50} {:<20} {:<10} {:<20}'.format('ID', 'Nome', 'ID da pasta', 'Status', 'Data de criação'))
-        for scan in scans['scans']:
-            print('{:<10} {:<50} {:<20} {:<10} {:<20}'.format(scan['id'], scan['name'], scan['folder_id'], scan['status'], scan['creation_date']))
-    else:
-        print('Erro ao acessar a API do Nessus:', response.status_code)
-else:
-    # Tentativa de autenticação utilizando a URL da API mais antiga (Nessus v6 e anteriores)
-    nessus_url = args.url + '/api'
-    response = requests.post(nessus_url + '/session', json={'username': username, 'password': password}, verify=verify_ssl)
+# Criar uma tabela para exibir os resultados e definir as colunas da tabela
+table = PrettyTable()
+table.field_names = ["ID", "Nome", "ID da pasta", "Status", "Data de criação"]
 
-    # Verifica se a resposta da API foi bem sucedida (código 200)
-    if response.status_code == 200:
-        token = json.loads(response.content)['token']
-        headers = {'X-Cookie': 'token=' + token}
+# Iterar sobre todos os scans e adicionar uma nova linha à tabela para cada um
+for scan in scans["scans"]:
+    table.add_row([
+        scan['id'],
+        scan['name'],
+        scan['folder_id'],
+        scan['status'],
+        scan['creation_date']
+    ])
 
-        # Lista todos os scans disponíveis no Nessus
-        response = requests.get(nessus_url + '/scans', headers=headers, verify=verify_ssl)
-
-        # Verifica se a resposta da API foi bem sucedida (código 200)
-        if response.status_code == 200:
-            scans = json.loads(response.content)
-            print('Lista de scans:')
-            print('{:<10} {:<50} {:<20} {:<10} {:<20}'.format('ID', 'Nome', 'ID da pasta', 'Status', 'Data de criação'))
-            for scan in scans['scans']:
-                print('{:<10} {:<50} {:<20} {:<10} {:<20}'.format(scan['id'], scan['name'], scan['folder_id'], scan['status'], scan['creation_date']))
-        else:
-            print('Erro ao acessar a API do Nessus:', response.status_code)
-   
+# Exibir a tabela com os resultados
+print(table)
