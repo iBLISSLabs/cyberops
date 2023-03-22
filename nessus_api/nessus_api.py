@@ -56,3 +56,18 @@ for scan in scans["scans"]:
 
 # Exibir a tabela com os resultados
 print(table)
+
+# Fazer download em formato Nessus do scan pelo ID
+scan_id = input("Digite o ID do scan para download: ")
+download_url = f"{url}/scans/{scan_id}/export"
+download_payload = {
+    "format": "nessus"
+}
+download_response = requests.post(download_url, headers=headers, json=download_payload, verify=verify_ssl)
+
+# Salvar o arquivo Nessus no disco
+file_name = f"{scan_id}.nessus"
+with open(file_name, "wb") as f:
+    f.write(download_response.content)
+
+print(f"O arquivo {file_name} foi salvo com sucesso!")
