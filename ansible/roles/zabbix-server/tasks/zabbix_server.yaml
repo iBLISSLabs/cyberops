@@ -8,7 +8,7 @@
     db_host: "localhost"
     db_name: "zabbix"
     db_user: "zabbix"
-    db_password: "HKf16a@123"
+    db_password: "SENHA_DO_BANCO"
   tasks:
     - name: Adiciona a chave do repositório APT do PostgreSQL
       apt_key:
