@@ -4,6 +4,7 @@
 import argparse
 import requests
 import json
+import time
 from prettytable import PrettyTable
 
 # Criar argumentos de linha de comando para URL, nome de usuário e senha
