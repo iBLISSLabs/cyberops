@@ -1,117 +1,67 @@
 ---
-# Nome: Zabbix 6.0 LTS Ubuntu 22.04
-# Versão: 1.0
-# Elaborado por: Evandro Santos
-# Elaborado em : 20 de março de 2023
-# Descrição: Esta playbook do Ansible, instala e configura o Zabbix Server 6.0 LTS
-#            em um servidor Ubuntu Linux 22.04, incluindo suas dependências e o banco
-#            de dados PostgreSQL.
-
-- name: Instalação e Configuração do Zabbix 6.0 LTS com PostgreSQL no Ubuntu 22.04
+- name: Instala o Zabbix 6.0 LTS e suas dependências
   hosts: 127.0.0.1
   become: true
-
   vars:
-    zabbix_db_name: zabbix
-    zabbix_db_user: zabbix
-    zabbix_db_password: StrongPasswordHere
-
+    postgresql_version: "13"
+    zabbix_version: "6.0"
+    db_host: "localhost"
+    db_name: "zabbix"
+    db_user: "zabbix"
+    db_password: "HKf16a@123"
   tasks:
-    - name: Atualização do Cache APT
+    - name: Adiciona a chave do repositório APT do PostgreSQL
+      apt_key:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Adiciona o repositório do PostgreSQL
+      apt_repository:
+        repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+        state: present
+        filename: pgdg
+
+    - name: Instala o PostgreSQL
       apt:
-        update_cache: true
+        name: postgresql-{{ postgresql_version }}
+        state: present
 
-    - name: Instalação dos Pacotes
+    - name: Instala as dependências do Zabbix
       apt:
-        name: "{{ item }}"
-        state: present
-      with_items:
-        - apache2
-        - apache2-utils
-        - libapache2-mod-php
-        - php
-        - php-cli
-        - php-bcmath
-        - php-mbstring
-        - php-gd
-        - php-xml
-        - mariadb-server
-        - php-mysql
-        - zabbix-server-mysql
-        - zabbix-frontend-php
-        - zabbix-apache-conf
-        - zabbix-agent
-      tags:
-        - pacotes
-
-    - name: Inicia o serviço do PostgreSQL
-      service:
-        name: postgresql
-        state: started
-
-    - name: Criação do usuário PostgreSQL para o Zabbix
-      postgresql_user:
-        name: "{{ zabbix_db_user }}"
-        password: "{{ zabbix_db_password }}"
-        encrypted: true
+        name: ['apache2', 'libapache2-mod-php', 'php', 'php-cli', 'php-common', 'php-pear', 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-bcmath', 'php-ldap', 'php-pgsql', 'php-mysql']
         state: present
 
-    - name: Criação da base de dados PostgreSQL para o Zabbix
-      postgresql_db:
-        name: "{{ zabbix_db_name }}"
-        owner: "{{ zabbix_db_user }}"
-        encoding: UTF8
-        lc_collate: en_US.UTF-8
-        lc_ctype: en_US.UTF-8
-        template: template0
+    - name: Adiciona o repositório do Zabbix
+      apt_repository:
+        repo: deb http://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu bionic main
+        state: present
+        filename: zabbix
+
+    - name: Adiciona a chave do repositório do Zabbix
+      apt_key:
+        url: https://repo.zabbix.com/zabbix-official-repo.key
         state: present
 
-    - name: Importação do esquema da base de dados do Zabbix
-      command: psql -U {{ zabbix_db_user }} -d {{ zabbix_db_name }} -f /usr/share/doc/zabbix-server-pgsql/create.sql.gz
-      tags:
-        - postgres
-
-    - name: Configuração do Zabbix server
-      lineinfile:
-        path: /etc/zabbix/zabbix_server.conf
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-      with_items:
-        - { regexp: "^DBHost=", line: "DBHost=localhost" }
-        - { regexp: "^DBName=", line: "DBName={{ zabbix_db_name }}" }
-        - { regexp: "^DBUser=", line: "DBUser={{ zabbix_db_user }}" }
-        - {
-            regexp: "^DBPassword=",
-            line: "DBPassword={{ zabbix_db_password }}",
-          }
+    - name: Instala o Zabbix server e o Zabbix agent
+      apt:
+        name: ['zabbix-server-pgsql', 'zabbix-frontend-php', 'zabbix-apache-conf', 'zabbix-agent']
+        state: present
       notify:
-        - restart zabbix-server
-      tags:
-        - zabbix-server
+        - configura zabbix
 
-    - name: Configuração do FrontEnd do Zabbix
-      lineinfile:
-        path: /etc/zabbix/apache.conf
-        regexp: "^php_value date.timezone"
-        line: "php_value date.timezone America/Sao_Paulo"
-      tags:
-        - zabbix-frontend
-
-    - name: Habilita e Inicia os Serviços
-      service:
-        name: "{{ item }}"
-        enabled: true
-        state: started
-      with_items:
-        - postgresql
-        - zabbix-server
-        - apache2
-        - zabbix-agent
-      tags:
-        - servicos
+    - name: Configura o Zabbix
+      template:
+        src: /home/evandro/projetos/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
+        dest: /etc/zabbix/zabbix_server.conf
+      notify:
+        - restart zabbix
 
   handlers:
-    - name: reinicialização do zabbix-server
-      service:
+    - name: configura zabbix
+      command: zabbix_server --config=/etc/zabbix/zabbix_server.conf
+      listen: "restart zabbix"
+
+    - name: restart zabbix
+      systemd:
         name: zabbix-server
         state: restarted
