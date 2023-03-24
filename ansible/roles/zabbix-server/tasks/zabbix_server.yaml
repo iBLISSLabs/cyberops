@@ -51,7 +51,7 @@
 
     - name: Configura o Zabbix
       template:
-        src: /home/evandro/projetos/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
+        src: /home/evandro/projetos/cyberops/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
         dest: /etc/zabbix/zabbix_server.conf
       notify:
         - restart zabbix

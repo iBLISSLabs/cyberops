@@ -1,0 +1,24 @@
+# Zabbix Server configuration file
+
+# General parameters
+pidfile=/run/zabbix/zabbix_server.pid
+logfile=/var/log/zabbix/zabbix_server.log
+loglevel=3
+debuglevel=2
+
+# Database connection settings
+DBHost={{ db_host }}
+DBName={{ db_name }}
+DBUser={{ db_user }}
+DBPassword={{ db_password }}
+
+# SNMP trap configuration
+SNMPTrapperFile=/var/log/snmptrap/snmptrap.log
+SNMPTrapperTimeout=300
+
+# Housekeeping
+HousekeepingFrequency=1
+MaxHousekeeperDelete=5000
+
+# Alerting
+AlertScriptsPath=/usr/lib/zabbix/alertscripts
