@@ -1,0 +1,67 @@
+---
+- name: Instala o Zabbix 6.0 LTS e suas dependências
+  hosts: 127.0.0.1
+  become: true
+  vars:
+    postgresql_version: "13"
+    zabbix_version: "6.0"
+    db_host: "localhost"
+    db_name: "zabbix"
+    db_user: "zabbix"
+    db_password: "HKf16a@123"
+  tasks:
+    - name: Adiciona a chave do repositório APT do PostgreSQL
+      apt_key:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Adiciona o repositório do PostgreSQL
+      apt_repository:
+        repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+        state: present
+        filename: pgdg
+
+    - name: Instala o PostgreSQL
+      apt:
+        name: postgresql-{{ postgresql_version }}
+        state: present
+
+    - name: Instala as dependências do Zabbix
+      apt:
+        name: ['apache2', 'libapache2-mod-php', 'php', 'php-cli', 'php-common', 'php-pear', 'php-curl', 'php-gd', 'php-mbstring', 'php-xml', 'php-bcmath', 'php-ldap', 'php-pgsql', 'php-mysql']
+        state: present
+
+    - name: Adiciona o repositório do Zabbix
+      apt_repository:
+        repo: deb http://repo.zabbix.com/zabbix/{{ zabbix_version }}/ubuntu bionic main
+        state: present
+        filename: zabbix
+
+    - name: Adiciona a chave do repositório do Zabbix
+      apt_key:
+        url: https://repo.zabbix.com/zabbix-official-repo.key
+        state: present
+
+    - name: Instala o Zabbix server e o Zabbix agent
+      apt:
+        name: ['zabbix-server-pgsql', 'zabbix-frontend-php', 'zabbix-apache-conf', 'zabbix-agent']
+        state: present
+      notify:
+        - configura zabbix
+
+    - name: Configura o Zabbix
+      template:
+        src: /home/evandro/projetos/cyberops/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
+        dest: /etc/zabbix/zabbix_server.conf
+      notify:
+        - restart zabbix
+
+  handlers:
+    - name: configura zabbix
+      command: zabbix_server --config=/etc/zabbix/zabbix_server.conf
+      listen: "restart zabbix"
+
+    - name: restart zabbix
+      systemd:
+        name: zabbix-server
+        state: restarted
