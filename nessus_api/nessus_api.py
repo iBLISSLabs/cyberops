@@ -65,9 +65,23 @@ if scan_id:
     download_data = {"format": "nessus"}
     response = requests.post(download_url, headers=headers, json=download_data, verify=verify_ssl)
     file_id = response.json()["file"]
+
+    # Aguardar a geração do relatório
+    while True:
+        status_url = f"{url}/scans/{scan_id}/export/{file_id}/status"
+        response = requests.get(status_url, headers=headers, verify=verify_ssl)
+        status = response.json()["status"]
+        if status == "ready":
+            break
+        print("Aguardando a geração do relatório...")
+        time.sleep(10)
+
+    # Fazer o download do relatório em formato Nessus
     download_url = f"{url}/scans/{scan_id}/export/{file_id}/download"
     response = requests.get(download_url, headers=headers, verify=verify_ssl)
-    filename = f"scan_{scan_id}.nessus"
-    with open(filename, "wb") as f:
+
+    # Salvar o arquivo Nessus localmente
+    with open(f"nessus_scan_{scan_id}.nessus", "wb") as f:
         f.write(response.content)
-    print(f"Relatório baixado com sucesso: {filename}")
+
+    print(f"Relatório Nessus salvo como nessus_scan_{scan_id}.nessus")
