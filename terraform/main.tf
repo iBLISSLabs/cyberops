@@ -16,7 +16,7 @@ resource "digitalocean_ssh_key" "ansible_ssh_key" {
   public_key = file("~/.ssh/id_rsa.pub")
 }
 
-resource "digitalocean_droplet" "web" {
+resource "digitalocean_droplet" "zabbix" {
   image  = "ubuntu-22-04-x64"
   name   = "zabbix"
   region = "nyc1"
