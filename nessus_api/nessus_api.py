@@ -13,12 +13,14 @@ parser.add_argument("-u", "--url", type=str, required=True, help="URL da API do 
 parser.add_argument("-n", "--username", type=str, required=True, help="Nome de usuário para a API do Nessus.")
 parser.add_argument("-p", "--password", type=str, required=True, help="Senha para a API do Nessus.")
 parser.add_argument("-i", "--id", type=int, help="ID do scan para baixar relatório em formato Nessus.")
+parser.add_argument("-f", "--filter", type=str, help="Filtro para a API do Nessus.")
 args = parser.parse_args()
 
 url = args.url
 username = args.username
 password = args.password
 scan_id = args.id
+filter = args.filter
 
 # Desativar verificação de SSL, se necessário
 verify_ssl = False
@@ -60,10 +62,15 @@ for scan in scans["scans"]:
 # Exibir a tabela com os resultados
 print(table)
 
-# Baixar um relatório em formato Nessus pelo ID do scan fornecido
+# Baixar um relatório em formato Nessus pelo ID do scan fornecido, aplicando um filtro se fornecido
 if scan_id:
     download_url = f"{url}/scans/{scan_id}/export"
     download_data = {"format": "nessus"}
+
+    # Adicionar o filtro se fornecido
+    if filter:
+        download_data["filter"] = filter
+
     response = requests.post(download_url, headers=headers, json=download_data, verify=verify_ssl)
     file_id = response.json()["file"]
 
