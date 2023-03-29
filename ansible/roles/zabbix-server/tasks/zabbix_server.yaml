@@ -8,7 +8,7 @@
     db_host: "localhost"
     db_name: "zabbix"
     db_user: "zabbix"
-    db_password: "SENHA_DO_BANCO"
+    db_password: "HKf16a@123"
   tasks:
     - name: Adiciona a chave do repositório APT do PostgreSQL
       apt_key:
@@ -25,6 +25,29 @@
       apt:
         name: postgresql-{{ postgresql_version }}
         state: present
+
+    - name: Copia o script de criação do banco de dados
+      copy:
+        src: /home/evandro/projetos/cyberops/ansible/roles/zabbix-server/files/create.sql
+        dest: /tmp/create.sql
+
+    - name: Cria o banco de dados do Zabbix
+      postgresql_db:
+        name: "{{ db_name }}"
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_password }}"
+        state: present
+
+    - name: Carrega o schema do Zabbix no banco de dados
+      command: psql -U {{ db_user }} -h {{ db_host }} {{ db_name }} < /tmp/create.sql
+
+    - name: Copia o arquivo de dados do Zabbix
+      copy:
+        src: /home/evandro/projetos/cyberops/ansible/roles/zabbix-server/files/data.sql.gz
+        dest: /tmp/data.sql.gz
+
+    - name: Carrega os dados do Zabbix no banco de dados
+      command: gunzip -c /tmp/data.sql.gz | psql -U {{ db_user }} -h {{ db_host }} {{ db_name }}
 
     - name: Instala as dependências do Zabbix
       apt:
@@ -51,7 +74,7 @@
 
     - name: Configura o Zabbix
       template:
-        src: /home/evandro/projetos/cyberops/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
+        src: /home/evandro/projetos/ansible/roles/zabbix-server/templates/zabbix_server.conf.j2
         dest: /etc/zabbix/zabbix_server.conf
       notify:
         - restart zabbix
